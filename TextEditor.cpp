@@ -6,6 +6,7 @@ using namespace std;
 
 // We use an AVL tree.
 // Base index starts from 0 and goes to N - 1.
+// Based on Model-1.
 
 // Key of textLine object
 typedef int key_t;
@@ -21,6 +22,8 @@ typedef struct t_t {
   struct tr_n_t  *right;
   // Text line
   line_t textLine;
+  // height of node
+  int height;
 } text_t;
 
 // Block of new nodes.
@@ -61,6 +64,8 @@ text_t *get_node(){
 // Adds the node to the free list
 void add_to_free_list(text_t *node){
   node->right = free_list;
+  // This node is cut from tree.
+  node->height = 0;
   free_list = node;
   nodes_returned +=1;
 }
@@ -70,6 +75,8 @@ text_t *create_text(){
   text_t *tmp_node;
   tmp_node = get_node();
   tmp_node->left = NULL;
+  // It will be the leaf.
+  tmp_node->height = 0;
   return( tmp_node );
 }
 
@@ -85,7 +92,9 @@ text_t getNodeAtIndex(char * root, int index){
   while(index >= 0){
     if(index < root->count){
       root = root->left;
-    } else if(root->count == index) return root;
+    } else if(root->count == index){
+      return root;
+    }
     else{
       root = root->right;
       index -= root->count;
@@ -118,8 +127,7 @@ text_t ** getPredecessorAndNode(text_t * root, int index){
       nodes[1] = root;
       if(root->right != NULL) nodes[0] = root->right;
       return nodes;
-    }
-    else{
+    } else{
       root = root->right;
       index -= root->count;
     }
@@ -135,6 +143,19 @@ char * set_line( text_t *txt, int index, char * new_line){
     return nodes[0]->textLine;
   }
   return NULL;
+}
+
+void rotate_zig_zig(text_t * unbalanced_node, text_t * parent_unbalanced_node){
+  if(parent_unbalanced_node->left == unbalanced_node){
+    // Do a Right rotation
+
+  }else{
+    // Do a Left rotation
+  }
+}
+
+void rotate_left(){
+
 }
 
 void insert_line( text_t *txt, int index, char * new_line){

@@ -17,9 +17,9 @@ typedef struct t_t {
   // Total nodes less than this count
   key_t      count;
   // Left child
-  struct tr_n_t  *left;
+  struct t_t  *left;
   // Right Child
-  struct tr_n_t  *right;
+  struct t_t  *right;
   // Text line
   line_t textLine;
   // height of node
@@ -45,19 +45,23 @@ int nodes_returned = 0;
 text_t *get_node(){
   text_t *tmp;
   nodes_taken += 1;
-  if( free_list != NULL )
-  {  tmp = free_list;
-     free_list = free_list -> right;
+  if( free_list != NULL ){
+    tmp = free_list;
+    free_list = free_list -> right;
   }
-  else
-  {  if( currentblock == NULL || size_left == 0)
-     {  currentblock =
-                (text_t *) malloc( BLOCKSIZE * sizeof(text_t) );
-        size_left = BLOCKSIZE;
-     }
-     tmp = currentblock++;
-     size_left -= 1;
+  else{
+    if( currentblock == NULL || size_left == 0){
+      currentblock = (text_t *) malloc( BLOCKSIZE * sizeof(text_t) );
+      size_left = BLOCKSIZE;
+    }
+    tmp = currentblock++;
+    size_left -= 1;
   }
+  // Fresh node
+  tmp->left = NULL;
+  tmp->right = NULL;
+  tmp->count = 0;
+  tmp->height = 0;
   return( tmp );
 }
 
@@ -72,12 +76,7 @@ void add_to_free_list(text_t *node){
 
 // Creates an empty tree.
 text_t *create_text(){
-  text_t *tmp_node;
-  tmp_node = get_node();
-  tmp_node->left = NULL;
-  // It will be the leaf.
-  tmp_node->height = 0;
-  return( tmp_node );
+  return(get_node());
 }
 
 // Returns the number of lines.
@@ -86,7 +85,7 @@ int length_text(text_t *txt){
 }
 
 // text_t
-text_t getNodeAtIndex(char * root, int index){
+text_t * getNodeAtIndex(text_t * root, int index){
   // Performs binary search using iteration
   if(root == NULL) return NULL;
   while(index >= 0){
@@ -106,43 +105,35 @@ text_t getNodeAtIndex(char * root, int index){
 // Returns the line at index 'index'
 char * getLine(text_t *txt, int index){
   // Do binary search.
-  text_t node = getNodeAtIndex(txt, index);
+  text_t * node = getNodeAtIndex(txt, index);
   if(node != NULL) return node->textLine;
   else return NULL;
 }
 
-void append_line( text_t *txt, char * new_line){
-  insert_line(txt, nodes_taken, new_line);
-}
-
 // Returns at 0->predecessor and 1->node
-text_t ** getPredecessorAndNode(text_t * root, int index){
-  // Use iteration
-  text_t * nodes[2];
-  while(index >= 0){
-    if(index < root->count){
-      root = root->left;
-      nodes[0] = root;
-    } else if(root->count == index){
-      nodes[1] = root;
-      if(root->right != NULL) nodes[0] = root->right;
-      return nodes;
-    } else{
-      root = root->right;
-      index -= root->count;
-    }
-  }
-  return NULL;
-}
+// text_t ** getPredecessorAndNode(text_t * root, int index){
+//   // Use iteration
+//   text_t * nodes[2];
+//   nodes[1] = getNodeAtIndex(root, index);
+//   if(nodes[1] != NULL){
+//     if(nodes[1]->left != NULL){
+//       nodes[0] = getNodeAtIndex(nodes[1], nodes[1]->count - 1);
+//     }else{
+//       nodes[0] = NULL;
+//     }
+//   }
+//   return nodes;
+// }
 
 char * set_line( text_t *txt, int index, char * new_line){
-  text_t *nodes = getPredecessorAndNode(txt, index);
-  if(nodes != NULL){
+  text_t *node = getNodeAtIndex(txt, index);
+  char * toReturn = NULL;
+  if(node != NULL){
     // Found node with given index
-    nodes[1]->textLine = new_line;
-    return nodes[0]->textLine;
+    char * toReturn = node->textLine;
+    node->textLine = new_line;
   }
-  return NULL;
+  return toReturn;
 }
 
 void rotate_zig_zig(text_t * unbalanced_node, text_t * parent_unbalanced_node){
@@ -151,19 +142,37 @@ void rotate_zig_zig(text_t * unbalanced_node, text_t * parent_unbalanced_node){
 
   }else{
     // Do a Left rotation
+
   }
 }
 
-void rotate_left(){
+void rotate_zig_zag(text_t * unbalanced_node, text_t * parent_unbalanced_node){
+  if(parent_unbalanced_node->left == unbalanced_node){
+    // Do a Left-Right rotation
 
+  }else{
+    // Do a Right-Left rotation
+  }
 }
 
 void insert_line( text_t *txt, int index, char * new_line){
+  text_t * node = getNodeAtIndex(txt, index);
+  if(node != NULL){
+    // Append in the middle
+    text_t * tmp = get_node();
+    
+  }else{
+    // Append at end
 
+  }
+}
+
+void append_line( text_t *txt, char * new_line){
+  insert_line(txt, nodes_taken, new_line);
 }
 
 char * delete_line( text_t *txt, int index){
-
+  return NULL;
 }
 
 int main(){

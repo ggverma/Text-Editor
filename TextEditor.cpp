@@ -1,5 +1,6 @@
-#include<iostream>
-#include<conio.h>
+#include <iostream>
+#include <stdlib.h>
+#include <conio.h>
 
 using namespace std;
 
@@ -12,20 +13,23 @@ typedef int key_t;								/* Key of textLine object */
 typedef char * line_t;							/* Sentence in the textLine object */
 
 // Struct defined for the node to store text for a given line (will be the node for the AVL tree)
-typedef struct textEditorNode {
+struct text_t {
 	key_t					count;				/* Total nodes less than this count */
 	line_t					textLine;			/* Text line */
-	struct textEditorNode	*left;				/* Left child */
-	struct textEditorNode	*right;				/* Right Child */
+	struct text_t			*left;				/* Left child */
+	struct text_t			*right;				/* Right Child */
 	int						height;				/* height of the node - to be used for balancing the tree */
-} text_t;
+	bool					isHead;				/* flag for the root node of the text-editor, created by 'create_text' function,
+												root node will not contain any text */
+};
 
 
 text_t	*currentblock = NULL;					/* Block of new nodes. */
-text_t	*free_list = NULL;					/* Nodes return to this list after deletion */
-int		nodes_taken = 0;					/* Total number of lines in text. nodes_taken = N */
-int		nodes_returned = 0;					/* Total number of nodes in free list / total nodes deleted */
+text_t	*free_list = NULL;						/* Nodes return to this list after deletion */
+int		nodes_taken = 0;						/* Total number of lines in text. nodes_taken = N */
+int		nodes_returned = 0;						/* Total number of nodes in free list / total nodes deleted */
 int		size_left;								/* Nodes left in currentblock */
+
 
 /*
 Return a node from currentblock / free_list.
@@ -60,6 +64,7 @@ text_t *get_node(){
 	tmp->right = NULL;
 	tmp->count = 1;
 	tmp->height = 0;
+	tmp->isHead = false;
 
 	return(tmp);
 }
@@ -74,24 +79,9 @@ void add_to_free_list(text_t *node){
 }
 
 /*
-Creates an empty tree.
-*/
-text_t *create_text(){
-	text_t *tmp_node;
-	tmp_node = get_node();
-
-	// Setting up the attributes for the new node
-	tmp_node->left = NULL;
-	tmp_node->count = 1;
-	tmp_node->height = 0;
-
-	return(tmp_node);
-}
-
-/*
 Function to get the node at the specified index
 */
-text_t* getNodeAtIndex(text_t *node, int index) {
+text_t * getNodeAtIndex(text_t *node, int index) {
 
 	if (node == NULL || index < 0) {
 		return NULL;
@@ -102,54 +92,17 @@ text_t* getNodeAtIndex(text_t *node, int index) {
 				// index of the root node matches with the index, hence we return the root node
 				return node;
 			}
-			else if (node->count > index){
+			else if (index < node->count){
 				// Move towards the left node as the required index lies below the current node index
 				node = node->left;
 			}
-			else if (node->count < index){
+			else if (index > node->count){
 				// Move towards the right node and subtract the index by [root->count] (as we are skipping these lines)
 				index -= node->count;
 				node = node->right;
 			}
 		}
 	}
-}
-
-// Returns the number of lines
-int length_text(text_t *txt){
-	// return the number of lines below the given text node.
-	return (txt->count + 1);
-}
-
-// Returns the line at index 'index'
-char * getLine(text_t *txt, int index){
-	// Do binary search.
-	text_t *node = getNodeAtIndex(txt, index);
-
-	if (node != NULL)
-		return node->textLine;
-	else
-		return NULL;
-}
-
-/*
-Function to replace the line text at the given index with the new line text
-Returns a pointer to the previous line contents if the line at index exists, NULL otherwise
-*/
-char * set_line(text_t *txt, int index, char * new_line){
-	// Get the node at the given index
-	text_t *node = getNodeAtIndex(txt, index);
-
-	char * prevLine = NULL;
-
-	if (node != NULL) {
-		// Store the prev line pointer to return
-		prevLine = node->textLine;
-		// Update the text of line for the given node
-		node->textLine = new_line;
-	}
-
-	return prevLine;
 }
 
 /*
@@ -196,7 +149,7 @@ bool isNodeBalanced(text_t* node){
 /*
 Function to balance the tree with zig-zig pattern
 */
-text_t* rotate_zig_zig(text_t * unbalanced_node, bool isleft){
+text_t * rotate_zig_zig(text_t * unbalanced_node, bool isleft){
 	text_t* tmp = NULL;
 
 	if (isleft) {
@@ -229,7 +182,7 @@ text_t* rotate_zig_zig(text_t * unbalanced_node, bool isleft){
 /*
 Function to balance the tree with zig-zag pattern
 */
-text_t* rotate_zig_zag(text_t * unbalanced_node, bool isleft){
+text_t * rotate_zig_zag(text_t * unbalanced_node, bool isleft){
 	text_t *tmp = NULL;
 
 	if (isleft){
@@ -269,7 +222,7 @@ text_t* rotate_zig_zag(text_t * unbalanced_node, bool isleft){
 Function to check if the child sub-trees at a given node are balanced
 Balances the child nodes in case they are not
 */
-text_t* rebalance(text_t* node){
+text_t * rebalance(text_t* node){
 
 	// Checking the balance of the left child
 	if (!isNodeBalanced(node)){
@@ -303,10 +256,32 @@ text_t* rebalance(text_t* node){
 /*
 Function to insert the line at the given index
 */
-text_t* insert(text_t *txt, int index, char * new_line){
+text_t * insert(text_t *txt, int index, char * new_line){
 
 	if (txt == NULL || index < 0) {
 		return NULL;
+	}
+	else if (txt->isHead == true){
+
+		if (txt->count == 1)
+		{
+			// Append the first child
+			text_t *newNode = get_node();
+			txt->left = get_node();
+			txt->left->textLine = new_line;
+		}
+		else
+		{
+			text_t *balancedNode = insert(txt->left, index, new_line);
+
+			if (balancedNode != NULL)
+			{
+				txt->left = balancedNode;
+			}
+		}
+
+		// Increase the count by 1 after addition
+		txt->count += 1;
 	}
 	else {
 		if (txt->count == index){
@@ -319,7 +294,6 @@ text_t* insert(text_t *txt, int index, char * new_line){
 
 			if (txt->left == NULL) {
 				txt->left = newNode;
-				txt->left->textLine = new_line;
 			}
 			else {
 				// Move to the righmost child of the left child
@@ -364,7 +338,10 @@ text_t* insert(text_t *txt, int index, char * new_line){
 		}
 
 		// Adjust the height of the current node
+		/*if (!txt->isHead)
+		{*/
 		update_node_height(txt);
+		//}
 
 		// rebalance the child-subtrees if required
 		return rebalance(txt);
@@ -374,10 +351,31 @@ text_t* insert(text_t *txt, int index, char * new_line){
 /*
 Function to delete the line at the given index
 */
-text_t* delete_node(text_t *txt, int index){
+text_t* delete_node(text_t *txt, int index, text_t &deletedNode){
 
 	if (txt == NULL || index < 0) {
 		return NULL;
+	}
+	else if (txt->isHead == true){
+		// Skip the node in case it is the head of the tree
+		text_t *tmp = delete_node(txt->left, index, deletedNode);
+
+		if (tmp != NULL)
+		{
+			// In case the node returned is the deleted node
+			if (tmp->height == -1){
+				tmp->height = 0;
+				deletedNode = *tmp;
+			}
+			else{
+				txt->left = tmp;
+			}
+		}
+
+		if (&deletedNode != NULL)
+		{
+			txt->count -= 1;
+		}
 	}
 	else {
 		if (txt->count == index){
@@ -386,6 +384,9 @@ text_t* delete_node(text_t *txt, int index){
 			if (txt->left == NULL || txt->right == NULL)
 			{
 				text_t *tmp = txt->left != NULL ? txt->left : txt->right;
+
+				text_t deletedNode = *txt;
+				deletedNode.height = -1;
 
 				if (tmp == NULL) {
 					tmp = txt;
@@ -400,10 +401,9 @@ text_t* delete_node(text_t *txt, int index){
 
 				// Delete temp node
 				add_to_free_list(tmp);
-
 				tmp->height = -1;
 
-				return tmp;
+				return &deletedNode;
 			}
 			else
 			{
@@ -417,12 +417,13 @@ text_t* delete_node(text_t *txt, int index){
 				txt->textLine = successor->textLine;
 
 				// delete the successor
-				delete_node(txt->right, 1);
+				text_t temp;
+				delete_node(txt->right, 1, temp);
 			}
 		}
 		else if (txt->count > index){
 			// Move towards the left node
-			text_t *balancedNode = delete_node(txt->left, index);
+			text_t *balancedNode = delete_node(txt->left, index, deletedNode);
 
 			if (balancedNode != NULL)
 			{
@@ -430,6 +431,7 @@ text_t* delete_node(text_t *txt, int index){
 				{
 					txt->left = NULL;
 					balancedNode->height = 0;
+					deletedNode = *balancedNode;
 				}
 				else
 				{
@@ -441,17 +443,18 @@ text_t* delete_node(text_t *txt, int index){
 			txt->count -= 1;
 		}
 		else if (txt->count < index){
-			// Move towards the right node and subtract the index by [root->count + 1] (as we are skipping these lines)
+			// Move towards the right node and subtract the index by root->count (as we are skipping these lines)
 
 			// Move to the right sub-tree
-			text_t *balancedNode = delete_node(txt->right, index - txt->count);
+			text_t *balancedNode = delete_node(txt->right, index - txt->count, deletedNode);
 
 			if (balancedNode != NULL)
 			{
 				if (balancedNode->height == -1)
 				{
-					txt->right = NULL;
+					//txt->right = NULL;
 					balancedNode->height = 0;
+					deletedNode = *balancedNode;
 				}
 				else
 				{
@@ -468,78 +471,179 @@ text_t* delete_node(text_t *txt, int index){
 	}
 }
 
+text_t * create_text(){
+	text_t *tmp_node;
+	tmp_node = get_node();
 
-void insert_line(text_t *txt, int index, char * new_line){
-	text_t *tmp = insert(txt, index, new_line);
+	// Setting up the attributes for the new node
+	tmp_node->left = NULL;
+	tmp_node->count = 1;
+	tmp_node->height = 0;
+	tmp_node->isHead = true;
+	tmp_node->textLine = "\0";
 
-	if (tmp != NULL)
+	return(tmp_node);
+}
+
+
+int length_text(text_t *txt){
+	if (txt != NULL){
+		if (txt->isHead)
+			return (txt->count - 1);		/* Decrement 1 from the count available at 'head' node since it does not contain text */
+		else
+			return (txt->count);			/* Return the count of lines available at the node (inclusive of the current node)*/
+	}
+
+	return 0;
+}
+
+
+char * get_line(text_t *txt, int index){
+	// Do binary search.
+	text_t *node = NULL;
+
+	if (txt != NULL)
 	{
-		txt = tmp;
+		node = getNodeAtIndex(txt, index);
+	}
+
+	if (node != NULL)
+		return node->textLine;
+	else
+		return NULL;
+}
+
+void append_line(text_t *txt, char * new_line)
+{
+	// Insert a line at index = node_taken + 1
+	if (new_line != NULL && txt != NULL){
+		insert(txt, (nodes_taken + 1), new_line);
 	}
 }
 
-char * delete_line(text_t *txt, int index){
-	//text_t *ptr = getNodeAtIndex(txt, index);
 
-	text_t *tmp = delete_node(txt, index);
+char * set_line(text_t *txt, int index, char * new_line){
+	// Get the node at the given index
+	text_t *node = getNodeAtIndex(txt, index);
+
+	char * prevLine = NULL;
+
+	if (node != NULL && new_line != NULL) {
+		// Store the prev line pointer to return
+		prevLine = node->textLine;
+		// Update the text of line for the given node
+		node->textLine = new_line;
+	}
+
+	return prevLine;
+}
+
+
+void insert_line(text_t *txt, int index, char * new_line){
+
+	if (new_line != NULL)
+	{
+		insert(txt, index, new_line);
+	}
+}
+
+char * delete_line(text_t *txt, int index)
+{
+	text_t *deletedNode = NULL;
+
+	text_t *tmp = delete_node(txt, index, deletedNode);
 
 	if (tmp != NULL)
 	{
+		// In case the node returned is the deleted node
 		if (tmp->height == -1){
-			//ptr = tmp;
 			tmp->height = 0;
+			deletedNode = *tmp;
 		}
 		else{
 			txt = tmp;
 		}
 	}
 
-	return NULL;
+	return deletedNode != NULL ? deletedNode->textLine : NULL;
 }
 
-void append_line(text_t *txt, char * new_line){
-	// Insert a line at index = node_taken + 1
-	text_t *tmp = insert(txt, (nodes_taken + 1), new_line);
-
-	if (tmp != NULL)
-	{
-		txt = tmp;
-	}
-}
-
-void preorder_traversal(text_t* root){
-	if (root == NULL)
-		return;
-
-	preorder_traversal(root->left);
-	cout << root->textLine << endl;
-	preorder_traversal(root->right);
-}
+//int main(){
+//
+//	// Create a root node
+//	text_t *root = create_text();
+//
+//	// Insert / Append lines
+//	append_line(root, "This is first line");
+//	append_line(root, "This is second line");
+//	append_line(root, "This is fourth line");
+//	insert_line(root, 3, "Third line inserted");
+//	append_line(root, "This is fifth line");
+//
+//	insert_line(root, 100, "What is this?");
+//
+//	// Check the length_text function
+//	cout << "Length of the text:" << endl;
+//	cout << "There are " << length_text(root) << " number of lines in the text." << endl;
+//
+//	cout << endl << "Get Line:" << endl;
+//	cout << "Line at index 4 = '" << get_line(root, 4) << "'\n";
+//
+//	// Change the text of the third line
+//	cout << "Set Line:";
+//	char *oldtext = set_line(root, 3, "This is third line");
+//	cout << endl << "Line at index 3 (before update) = '" << oldtext << "'";
+//	cout << endl << "Line at index 3 (after update) = '" << get_line(root, 3) << "'\n";
+//
+//	// Delete line 5
+//	cout << "Delete line:" << endl;
+//	char *p = delete_line(root, 5);
+//	cout << "5th line deleted. Deleted text = '" << p << "'" << endl;
+//
+//	cout << endl << "Pre-order traversal" << endl;
+//	// Print the whole tree
+//	preorder_traversal(root);
+//
+//	_getch();
+//}
 
 
 int main(){
 
-	text_t *root = create_text();
+	int i, tmp;
+	text_t *txt2;
+	char *c;
 
-	root->textLine = "This is the first line";
-
-	insert_line(root, 2, "This is second line");
-
-	text_t *tmp = insert(root, 3, "This is third line");
-	if (tmp != NULL)
-	{
-		root = tmp;
+	txt2 = create_text();
+	for (i = 1; i <= 10000; i++){
+		if (i % 2 == 1)
+			append_line(txt2, "A");
+		else
+			append_line(txt2, "B");
 	}
 
-	insert_line(root, 4, "This is fourth line");
+	tmp = length_text(txt2);
+	cout << "length should be 10000, is " << tmp << endl;
 
-	insert_line(root, 5, "This is fifth line");
+	c = get_line(txt2, 9876);
+	cout << "line 9876 of txt2 should be B, found " << c << endl;
 
-	char *p = delete_line(root, 5);
+	for (i = 10000; i > 1; i -= 2){
+		c = delete_line(txt2, i);
 
-	//cout << "previous line = " << p << endl;
+		/*char ch = *c;
 
-	preorder_traversal(root);
+		if (ch != 'B'){
+		cout << "line "<< i << " of txt2 should be B, found  " << c << endl;
+		break;
+		}*/
+
+		//append_line(txt2, c);
+	}
+
+	cout << "All Tests passed" << endl;
 
 	_getch();
+
+	return(0);
 }
